@@ -46,25 +46,17 @@ export default function WorkerDetailScreen() {
         })
       ]);
 
+      // Check for errors
+      if (detailsRes.error) throw detailsRes.error;
+      if (workerRes.error) throw workerRes.error;
+
       // Procesar datos del trabajador
-      let workerData = null;
-      if (Array.isArray(workerRes)) {
-        workerData = workerRes.find(w => w.id === workerId);
-      } else if (workerRes?.data) {
-        workerData = Array.isArray(workerRes.data) ? workerRes.data.find(w => w.id === workerId) : workerRes.data;
-      }
+      const workerData = Array.isArray(workerRes.data)
+        ? workerRes.data.find(w => w.id === workerId)
+        : workerRes.data || null;
       setWorker(workerData);
 
-      let detailsData = [];
-      if (detailsRes?.data && Array.isArray(detailsRes.data)) {
-        detailsData = detailsRes.data;
-      } else if (Array.isArray(detailsRes)) {
-        detailsData = detailsRes;
-      } else if (detailsRes?.result?.data) {
-        detailsData = detailsRes.result.data;
-      } else if (detailsRes?.result && Array.isArray(detailsRes.result)) {
-        detailsData = detailsRes.result;
-      }
+      const detailsData = Array.isArray(detailsRes.data) ? detailsRes.data : [];
 
       // Normalizar is_paid
       const normalizedDetails = detailsData.map(item => ({
@@ -107,16 +99,13 @@ export default function WorkerDetailScreen() {
 
   const handleMarkAsPaid = async (jornalId) => {
     try {
-      // Nota: Este endpoint puede variar según la implementación de la API
-      // Si no existe uno específico, se usa actualizar_work_event_detail
-      const response = await dypai.api.put("actualizar_work_event_detail", {
+      const { error } = await dypai.api.put("actualizar_work_event_detail", {
         id: jornalId,
         is_paid: true,
       });
-      
-      if (response && (response.success || response.id)) {
-        loadWorkerData(); // Recargar datos
-      }
+      if (error) throw error;
+
+      loadWorkerData(); // Recargar datos
     } catch (error) {
       console.error("Error marcando como pagado:", error);
       Alert.alert("Error", "No se pudo actualizar el estado de pago.");

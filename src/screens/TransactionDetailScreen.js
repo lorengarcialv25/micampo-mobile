@@ -129,9 +129,9 @@ export default function TransactionDetailScreen() {
 
   const loadParcels = async () => {
     try {
-      const res = await dypai.api.get("obtener_parcels");
-      const data = Array.isArray(res) ? res : (res?.data || []);
-      setParcels(data);
+      const { data, error } = await dypai.api.get("obtener_parcels");
+      if (error) throw error;
+      setParcels(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error cargando parcelas:", error);
     }
@@ -184,8 +184,9 @@ export default function TransactionDetailScreen() {
         descripcion: description || null,
       };
 
-      await dypai.api.put("actualizar_transaccion", updatedData);
-      
+      const { error } = await dypai.api.put("actualizar_transaccion", updatedData);
+      if (error) throw error;
+
       setTransaction({ ...transaction, ...updatedData });
       setIsEditing(false);
       Alert.alert("Éxito", "Transacción actualizada correctamente");
@@ -212,7 +213,8 @@ export default function TransactionDetailScreen() {
               if (transaction.archivo_adjunto_id) {
                 await dypai.storage.from('files').remove([transaction.archivo_adjunto_id]);
               }
-              await dypai.api.delete("eliminar_transaccion", { params: { id: transaction.id } });
+              const { error } = await dypai.api.delete("eliminar_transaccion", { params: { id: transaction.id } });
+              if (error) throw error;
               navigation.goBack();
             } catch (error) {
               console.error("Error eliminando:", error);

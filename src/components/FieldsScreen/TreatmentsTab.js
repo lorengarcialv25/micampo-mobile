@@ -18,7 +18,7 @@ export default function TreatmentsTab({ fieldId, isActive }) {
   const loadTreatments = async () => {
     try {
       setLoading(true);
-      const response = await dypai.api.get("obtener_treatments", {
+      const { data, error } = await dypai.api.get("obtener_treatments", {
         params: {
           parcel_id: fieldId,
           limit: 100,
@@ -26,15 +26,9 @@ export default function TreatmentsTab({ fieldId, isActive }) {
           order: "DESC",
         }
       });
-      
-      let treatmentsData = [];
-      if (response?.data && Array.isArray(response.data)) {
-        treatmentsData = response.data;
-      } else if (Array.isArray(response)) {
-        treatmentsData = response;
-      }
-      
-      setTreatments(treatmentsData);
+      if (error) throw error;
+
+      setTreatments(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error cargando tratamientos:", error);
       Alert.alert("Error", "No se pudieron cargar los tratamientos");

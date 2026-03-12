@@ -38,18 +38,10 @@ export default function TreatmentsScreen() {
         params.parcel_id = parcelId;
       }
 
-      const response = await dypai.api.get("obtener_treatments", { params });
-      
-      let treatmentsData = [];
-      if (response?.data && Array.isArray(response.data)) {
-        treatmentsData = response.data;
-      } else if (Array.isArray(response)) {
-        treatmentsData = response;
-      } else if (response?.result?.data) {
-        treatmentsData = response.result.data;
-      }
-      
-      setTreatments(treatmentsData);
+      const { data, error } = await dypai.api.get("obtener_treatments", { params });
+      if (error) throw error;
+
+      setTreatments(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error cargando tratamientos:", error);
       Alert.alert("Error", "No se pudieron cargar los tratamientos.");

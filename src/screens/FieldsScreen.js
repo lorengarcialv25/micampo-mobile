@@ -129,22 +129,16 @@ export default function FieldsScreen() {
 
   const loadParcelas = async () => {
     try {
-      const response = await dypai.api.get("obtener_parcels", {
+      const { data, error } = await dypai.api.get("obtener_parcels", {
         params: {
           sort_by: 'name',
           order: 'ASC',
           limit: 1000
         }
       });
-      
-      let parcelsData = [];
-      if (response?.data && Array.isArray(response.data)) {
-        parcelsData = response.data;
-      } else if (Array.isArray(response)) {
-        parcelsData = response;
-      }
-      
-      setFields(parcelsData);
+      if (error) throw error;
+
+      setFields(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error cargando parcelas:", error);
       Alert.alert("Error", "No se pudieron cargar las parcelas. Intenta de nuevo.");
@@ -165,14 +159,12 @@ export default function FieldsScreen() {
 
   const handleCreateParcela = async (parcelaData) => {
     try {
-      const response = await dypai.api.post("crear_parcela", parcelaData);
-      if (response && (response.success || response.id)) {
-        Alert.alert("Éxito", "Parcela creada correctamente");
-        setShowModal(false);
-        loadParcelas();
-      } else {
-        throw new Error("No se pudo crear la parcela");
-      }
+      const { data, error } = await dypai.api.post("crear_parcela", parcelaData);
+      if (error) throw error;
+
+      Alert.alert("Éxito", "Parcela creada correctamente");
+      setShowModal(false);
+      loadParcelas();
     } catch (error) {
       console.error("Error creando parcela:", error);
       Alert.alert("Error", error.message || "No se pudo crear la parcela. Intenta de nuevo.");

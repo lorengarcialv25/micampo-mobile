@@ -45,17 +45,11 @@ export default function AddTreatmentScreen() {
   const loadParcels = async () => {
     try {
       setLoadingData(true);
-      const response = await dypai.api.get("obtener_parcels", {
+      const { data, error } = await dypai.api.get("obtener_parcels", {
         params: { sort_by: "name", order: "ASC", limit: 1000 },
       });
-      
-      let parcelsData = [];
-      if (response?.data && Array.isArray(response.data)) {
-        parcelsData = response.data;
-      } else if (Array.isArray(response)) {
-        parcelsData = response;
-      }
-      setParcels(parcelsData);
+      if (error) throw error;
+      setParcels(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error cargando parcelas:", error);
       Alert.alert("Error", "No se pudieron cargar las parcelas");
@@ -98,14 +92,11 @@ export default function AddTreatmentScreen() {
         notes: notes.trim(),
       };
 
-      const response = await dypai.api.post("crear_treatment", treatmentData);
-      
-      if (response && (response.success || response.id)) {
-        Alert.alert("Éxito", "Tratamiento registrado correctamente");
-        navigation.goBack();
-      } else {
-        throw new Error("No se pudo registrar el tratamiento");
-      }
+      const { data, error } = await dypai.api.post("crear_treatment", treatmentData);
+      if (error) throw error;
+
+      Alert.alert("Éxito", "Tratamiento registrado correctamente");
+      navigation.goBack();
     } catch (error) {
       console.error("Error guardando tratamiento:", error);
       Alert.alert("Error", error.message || "No se pudo registrar el tratamiento");

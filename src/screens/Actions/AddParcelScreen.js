@@ -42,15 +42,12 @@ export default function AddParcelScreen() {
         ...(variety && variety.trim() && { variety: variety.trim() }),
       };
 
-      const response = await dypai.api.post("crear_parcela", parcelaData);
-      
-      if (response && (response.success || response.id)) {
-        Alert.alert("Éxito", "Parcela creada correctamente", [
-          { text: "OK", onPress: () => navigation.goBack() }
-        ]);
-      } else {
-        throw new Error("No se pudo crear la parcela");
-      }
+      const { data, error } = await dypai.api.post("crear_parcela", parcelaData);
+      if (error) throw error;
+
+      Alert.alert("Éxito", "Parcela creada correctamente", [
+        { text: "OK", onPress: () => navigation.goBack() }
+      ]);
     } catch (error) {
       console.error("Error creando parcela:", error);
       Alert.alert("Error", error.message || "No se pudo crear la parcela. Intenta de nuevo.");

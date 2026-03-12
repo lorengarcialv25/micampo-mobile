@@ -25,7 +25,7 @@ export default function FinanzasTab({ fieldId, isActive }) {
     try {
       setLoading(true);
       
-      const response = await dypai.api.get("obtener_transacciones", {
+      const { data: responseData, error } = await dypai.api.get("obtener_transacciones", {
         params: {
           parcel_id: fieldId,
           limit: 100,
@@ -33,13 +33,9 @@ export default function FinanzasTab({ fieldId, isActive }) {
           order: "DESC",
         }
       });
+      if (error) throw error;
 
-      let transactions = [];
-      if (response?.data && Array.isArray(response.data)) {
-        transactions = response.data;
-      } else if (Array.isArray(response)) {
-        transactions = response;
-      }
+      const transactions = Array.isArray(responseData) ? responseData : [];
 
       const expenses = transactions
         .filter(t => t.type === 'expense')

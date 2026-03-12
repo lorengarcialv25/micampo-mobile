@@ -25,22 +25,16 @@ export default function ActivityTab({ fieldId, isActive }) {
   const loadWorkEvents = async () => {
     try {
       setLoading(true);
-      const eventsResponse = await dypai.api.get("obtener_work_events_completos", {
+      const { data, error } = await dypai.api.get("obtener_work_events_completos", {
         params: {
           parcel_id: fieldId,
           limit: 100,
           offset: 0
         }
       });
-      
-      let eventsData = [];
-      if (eventsResponse?.data && Array.isArray(eventsResponse.data)) {
-        eventsData = eventsResponse.data;
-      } else if (Array.isArray(eventsResponse)) {
-        eventsData = eventsResponse;
-      }
-      
-      setTasks(eventsData);
+      if (error) throw error;
+
+      setTasks(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error cargando work events:", error);
       Alert.alert("Error", "No se pudieron cargar las actividades");

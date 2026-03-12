@@ -40,12 +40,12 @@ export default function PendingPaymentsScreen() {
         }),
       ]);
 
-      setWorkers(Array.isArray(workersRes) ? workersRes : workersRes?.data || []);
-      
-      let detailsData = [];
-      if (jornalesRes?.data && Array.isArray(jornalesRes.data)) detailsData = jornalesRes.data;
-      else if (Array.isArray(jornalesRes)) detailsData = jornalesRes;
-      else if (jornalesRes?.result && Array.isArray(jornalesRes.result)) detailsData = jornalesRes.result;
+      if (workersRes.error) throw workersRes.error;
+      if (jornalesRes.error) throw jornalesRes.error;
+
+      setWorkers(Array.isArray(workersRes.data) ? workersRes.data : []);
+
+      const detailsData = Array.isArray(jornalesRes.data) ? jornalesRes.data : [];
       
       // Normalizar is_paid para evitar problemas con strings 'true'/'false'
       const normalizedDetails = detailsData.map(j => ({

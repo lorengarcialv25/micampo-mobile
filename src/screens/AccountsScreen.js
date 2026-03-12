@@ -286,15 +286,17 @@ export default function AccountsScreen() {
         dypai.api.get("obtener_transacciones", { params: { campaign_id: currentCampaignId, type: "expense", limit: 1000 } }),
         dypai.api.get("obtener_transacciones", { params: { campaign_id: currentCampaignId, type: "income", limit: 1000 } })
       ]);
-      
-      const getSum = (res) => {
-        const data = res?.data || res?.result || (Array.isArray(res) ? res : []);
-        return data.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+
+      if (expRes.error) throw expRes.error;
+      if (incRes.error) throw incRes.error;
+
+      const getSum = (items) => {
+        return (items || []).reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
       };
 
       setTotals({
-        expenses: getSum(expRes),
-        incomes: getSum(incRes)
+        expenses: getSum(expRes.data),
+        incomes: getSum(incRes.data)
       });
     } catch (e) {
       console.error("Error cargando totales:", e);
@@ -320,8 +322,9 @@ export default function AccountsScreen() {
       if (filterCategory !== "all") params.category = filterCategory;
       if (searchTerm.trim()) params.search = searchTerm;
 
-      const res = await dypai.api.get("obtener_transacciones", { params });
-      const newData = res?.data || res?.result || (Array.isArray(res) ? res : []);
+      const { data, error } = await dypai.api.get("obtener_transacciones", { params });
+      if (error) throw error;
+      const newData = data || [];
 
       if (newData.length < PAGE_SIZE) {
         setHasMore(false);

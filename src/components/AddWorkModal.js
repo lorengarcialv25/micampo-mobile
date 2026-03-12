@@ -77,22 +77,11 @@ export default function AddWorkModal({ visible, onClose, onSuccess }) {
         }),
       ]);
 
-      let parcelsData = [];
-      if (parcelsRes?.data && Array.isArray(parcelsRes.data)) {
-        parcelsData = parcelsRes.data;
-      } else if (Array.isArray(parcelsRes)) {
-        parcelsData = parcelsRes;
-      }
+      if (parcelsRes.error) throw parcelsRes.error;
+      if (workersRes.error) throw workersRes.error;
 
-      let workersData = [];
-      if (workersRes?.data && Array.isArray(workersRes.data)) {
-        workersData = workersRes.data;
-      } else if (Array.isArray(workersRes)) {
-        workersData = workersRes;
-      }
-
-      setParcels(parcelsData);
-      setWorkers(workersData);
+      setParcels(Array.isArray(parcelsRes.data) ? parcelsRes.data : []);
+      setWorkers(Array.isArray(workersRes.data) ? workersRes.data : []);
     } catch (error) {
       console.error("Error cargando datos:", error);
       Alert.alert("Error", "No se pudieron cargar las parcelas y trabajadores");
@@ -219,18 +208,18 @@ export default function AddWorkModal({ visible, onClose, onSuccess }) {
         description: description.trim() || null,
       };
 
-      const workEventResponse = await dypai.api.post(
+      const { data: workEventResult, error: workEventError } = await dypai.api.post(
         "crear_work_event",
         workEventData
       );
 
-      console.log("Respuesta crear_work_event:", workEventResponse);
+      if (workEventError) throw workEventError;
 
-      // La respuesta puede venir en diferentes formatos
-      const workEventId = workEventResponse?.id || workEventResponse?.data?.id;
-      
+      const created = Array.isArray(workEventResult) ? workEventResult[0] : workEventResult;
+      const workEventId = created?.id;
+
       if (!workEventId) {
-        console.error("No se encontró ID en la respuesta:", workEventResponse);
+        console.error("No se encontró ID en la respuesta:", workEventResult);
         throw new Error("No se pudo crear el trabajo. La respuesta no contiene un ID válido.");
       }
 
@@ -246,7 +235,10 @@ export default function AddWorkModal({ visible, onClose, onSuccess }) {
         })
       );
 
-      await Promise.all(detailsPromises);
+      const detailsResults = await Promise.all(detailsPromises);
+      for (const result of detailsResults) {
+        if (result.error) throw result.error;
+      }
 
       Alert.alert("Éxito", "Trabajo registrado correctamente", [
         {

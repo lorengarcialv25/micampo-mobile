@@ -67,18 +67,22 @@ export default function CropsScreen() {
       
       const [ticketsRes, incomeRes, clientsRes] = await Promise.all([
         dypai.api.get("obtener_harvest_tickets", { params: { campaign_id: currentCampaignId } }),
-        dypai.api.get("obtener_transacciones", { 
-          params: { 
+        dypai.api.get("obtener_transacciones", {
+          params: {
             campaign_id: currentCampaignId,
             type: "income"
-          } 
+          }
         }),
         dypai.api.get("obtener_clientes")
       ]);
 
-      setHarvestTickets(Array.isArray(ticketsRes) ? ticketsRes : (ticketsRes?.data || []));
-      setIncomeTransactions(Array.isArray(incomeRes) ? incomeRes : (incomeRes?.data || []));
-      setClients(Array.isArray(clientsRes) ? clientsRes : (clientsRes?.data || []));
+      const ticketsData = ticketsRes?.data || [];
+      const incomeData = incomeRes?.data || [];
+      const clientsData = clientsRes?.data || [];
+
+      setHarvestTickets(ticketsData);
+      setIncomeTransactions(incomeData);
+      setClients(clientsData);
     } catch (error) {
       console.error("Error cargando datos de campaña:", error);
       Alert.alert("Error", "No se pudieron cargar los datos de la campaña");
@@ -130,7 +134,8 @@ export default function CropsScreen() {
 
   const handleCreateTicket = async (payload) => {
     try {
-      await dypai.api.post("crear_harvest_ticket", payload);
+      const { data, error } = await dypai.api.post("crear_harvest_ticket", payload);
+      if (error) throw error;
       Alert.alert("Éxito", "Albarán registrado correctamente");
       setShowTicketModal(false);
       loadData();

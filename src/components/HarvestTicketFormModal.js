@@ -103,9 +103,12 @@ export default function HarvestTicketFormModal({ visible, onClose, onSave, initi
         }),
         dypai.api.get("obtener_clientes")
       ]);
-      
-      setParcels(Array.isArray(parcelsRes) ? parcelsRes : (parcelsRes?.data || []));
-      setClients(Array.isArray(clientsRes) ? clientsRes : (clientsRes?.data || []));
+
+      if (parcelsRes.error) throw parcelsRes.error;
+      if (clientsRes.error) throw clientsRes.error;
+
+      setParcels(Array.isArray(parcelsRes.data) ? parcelsRes.data : []);
+      setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
     } catch (error) {
       console.error("Error cargando datos para albarán:", error);
     } finally {

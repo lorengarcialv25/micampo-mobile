@@ -73,7 +73,8 @@ export default function TaskDetailScreen() {
   const confirmDelete = async () => {
     try {
       setDeleting(true);
-      await dypai.api.delete('eliminar_work_event', { params: { id: taskId } });
+      const { error } = await dypai.api.delete('eliminar_work_event', { params: { id: taskId } });
+      if (error) throw error;
       Alert.alert("Éxito", "Tarea eliminada correctamente");
       navigation.goBack();
     } catch (error) {
@@ -97,27 +98,14 @@ export default function TaskDetailScreen() {
         }),
       ]);
 
-      let eventsData = [];
-      if (eventRes?.result?.data && Array.isArray(eventRes.result.data)) {
-        eventsData = eventRes.result.data;
-      } else if (eventRes?.data && Array.isArray(eventRes.data)) {
-        eventsData = eventRes.data;
-      } else if (Array.isArray(eventRes)) {
-        eventsData = eventRes;
-      }
-      
+      if (eventRes.error) throw eventRes.error;
+      if (detailsRes.error) throw detailsRes.error;
+
+      const eventsData = Array.isArray(eventRes.data) ? eventRes.data : [];
+
       const eventData = eventsData.find((e) => e.id === taskId || e.id?.toString() === taskId?.toString());
 
-      let detailsData = [];
-      if (detailsRes?.result?.data && Array.isArray(detailsRes.result.data)) {
-        detailsData = detailsRes.result.data;
-      } else if (detailsRes?.result && Array.isArray(detailsRes.result)) {
-        detailsData = detailsRes.result;
-      } else if (detailsRes?.data && Array.isArray(detailsRes.data)) {
-        detailsData = detailsRes.data;
-      } else if (Array.isArray(detailsRes)) {
-        detailsData = detailsRes;
-      }
+      const detailsData = Array.isArray(detailsRes.data) ? detailsRes.data : [];
 
       if (!eventData) {
         Alert.alert("Error", "No se encontró la tarea");

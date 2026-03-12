@@ -39,38 +39,34 @@ export default function WorkersScreen() {
         const [workersRes, parcelsRes, detailsRes, eventsRes] = await Promise.all([
           dypai.api.get('obtener_workers', { params: { sort_by: 'name', order: 'ASC' } }),
           dypai.api.get('obtener_parcels', { params: { sort_by: 'name', order: 'ASC' } }),
-          dypai.api.get('obtener_work_event_details', { 
-            params: { 
-              sort_by: 'created_at', 
+          dypai.api.get('obtener_work_event_details', {
+            params: {
+              sort_by: 'created_at',
               order: 'DESC',
-              limit: 1000 
-            } 
+              limit: 1000
+            }
           }),
-          dypai.api.get('obtener_work_events_completos', { 
-            params: { 
+          dypai.api.get('obtener_work_events_completos', {
+            params: {
               campaign_id: currentCampaignId,
               limit: 1000,
               offset: 0
-            } 
+            }
           })
         ]);
 
+        // Check for errors
+        if (workersRes.error) throw workersRes.error;
+        if (parcelsRes.error) throw parcelsRes.error;
+        if (detailsRes.error) throw detailsRes.error;
+        if (eventsRes.error) throw eventsRes.error;
+
         // Procesar trabajadores
-        let workersData = [];
-        if (workersRes?.data && Array.isArray(workersRes.data)) {
-          workersData = workersRes.data;
-        } else if (Array.isArray(workersRes)) {
-          workersData = workersRes;
-        }
+        const workersData = Array.isArray(workersRes.data) ? workersRes.data : [];
         setWorkers(workersData);
 
         // Procesar parcelas
-        let parcelsData = [];
-        if (parcelsRes?.data && Array.isArray(parcelsRes.data)) {
-          parcelsData = parcelsRes.data;
-        } else if (Array.isArray(parcelsRes)) {
-          parcelsData = parcelsRes;
-        }
+        const parcelsData = Array.isArray(parcelsRes.data) ? parcelsRes.data : [];
         setParcels(parcelsData);
 
         // Crear mapas para búsqueda rápida
@@ -81,14 +77,7 @@ export default function WorkersScreen() {
         parcelsData.forEach(p => { parcelsMap[p.id] = p; });
 
         // Procesar jornales (work_event_details)
-        let detailsData = [];
-        if (detailsRes?.data && Array.isArray(detailsRes.data)) {
-          detailsData = detailsRes.data;
-        } else if (Array.isArray(detailsRes)) {
-          detailsData = detailsRes;
-        } else if (detailsRes?.result && Array.isArray(detailsRes.result)) {
-          detailsData = detailsRes.result;
-        }
+        const detailsData = Array.isArray(detailsRes.data) ? detailsRes.data : [];
 
         // Transformar jornales al formato esperado
         const transformedJornales = detailsData.map(detail => {
@@ -118,15 +107,7 @@ export default function WorkersScreen() {
         setJornales(transformedJornales);
 
         // Procesar tareas (work_events)
-        let eventsData = [];
-        // La API devuelve los datos en result.data, no directamente en data
-        if (eventsRes?.result?.data && Array.isArray(eventsRes.result.data)) {
-          eventsData = eventsRes.result.data;
-        } else if (eventsRes?.data && Array.isArray(eventsRes.data)) {
-          eventsData = eventsRes.data;
-        } else if (Array.isArray(eventsRes)) {
-          eventsData = eventsRes;
-        }
+        const eventsData = Array.isArray(eventsRes.data) ? eventsRes.data : [];
 
         // Transformar tareas al formato esperado
         const transformedTareas = eventsData.map(event => {

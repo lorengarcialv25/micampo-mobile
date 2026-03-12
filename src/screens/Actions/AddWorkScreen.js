@@ -99,9 +99,9 @@ export default function AddWorkScreen() {
 
       const [parcelsRes, workersRes, taskTypesRes, eventRes] = await Promise.all(promises);
 
-      const parcelsData = Array.isArray(parcelsRes) ? parcelsRes : parcelsRes?.data || [];
-      const workersData = Array.isArray(workersRes) ? workersRes : workersRes?.data || [];
-      const taskTypesData = Array.isArray(taskTypesRes) ? taskTypesRes : taskTypesRes?.data || [];
+      const parcelsData = parcelsRes?.data || [];
+      const workersData = workersRes?.data || [];
+      const taskTypesData = taskTypesRes?.data || [];
 
       setParcels(parcelsData);
       setWorkers(workersData);
@@ -111,10 +111,7 @@ export default function AddWorkScreen() {
         console.log("🔍 Edit Mode - eventRes:", JSON.stringify(eventRes, null, 2));
         
         let eventData = null;
-        if (Array.isArray(eventRes)) eventData = eventRes[0];
-        else if (eventRes?.result?.data?.[0]) eventData = eventRes.result.data[0];
-        else if (eventRes?.result?.[0]) eventData = eventRes.result[0];
-        else if (eventRes?.data?.[0]) eventData = eventRes.data[0];
+        if (Array.isArray(eventRes?.data)) eventData = eventRes.data[0];
         else if (eventRes?.data) eventData = eventRes.data;
 
         if (eventData) {
@@ -182,8 +179,10 @@ export default function AddWorkScreen() {
   const createWorkerOnTheFly = async (name) => {
     try {
       setCreatingItem(true);
-      const res = await dypai.api.post("crear_worker", { name });
-      const newWorkerId = res?.id || res?.data?.id || res?.result?.id;
+      const { data, error } = await dypai.api.post("crear_worker", { name });
+      if (error) throw error;
+      const created = Array.isArray(data) ? data[0] : data;
+      const newWorkerId = created?.id;
       if (!newWorkerId) throw new Error("No se pudo crear el trabajador");
       
       const newWorker = { id: String(newWorkerId), name };
@@ -201,8 +200,10 @@ export default function AddWorkScreen() {
   const createTaskTypeOnTheFly = async (name, targetRowId = null) => {
     try {
       setCreatingItem(true);
-      const res = await dypai.api.post("crear_task_type", { name });
-      const newTaskId = res?.id || res?.data?.id || res?.result?.id;
+      const { data, error } = await dypai.api.post("crear_task_type", { name });
+      if (error) throw error;
+      const created = Array.isArray(data) ? data[0] : data;
+      const newTaskId = created?.id;
       if (!newTaskId) throw new Error("No se pudo crear la tarea");
       
       const newTask = { id: name, name };
@@ -228,8 +229,10 @@ export default function AddWorkScreen() {
       // Capitalizar el nombre como en la versión web
       const capitalizedName = name.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
       
-      const res = await dypai.api.post("crear_parcela", { name: capitalizedName });
-      const newParcelId = res?.id || res?.[0]?.id || res?.result?.id || res?.data?.id;
+      const { data, error } = await dypai.api.post("crear_parcela", { name: capitalizedName });
+      if (error) throw error;
+      const created = Array.isArray(data) ? data[0] : data;
+      const newParcelId = created?.id;
       if (!newParcelId) throw new Error("No se pudo crear la parcela");
       
       const newParcel = { id: String(newParcelId), name: capitalizedName };
@@ -498,28 +501,29 @@ export default function AddWorkScreen() {
 
       if (editId) {
         // 1. Actualizar la Cabecera (sin parcel_id ni task_type, igual que en web)
-        await dypai.api.put("actualizar_work_event", {
+        const { error: updateError } = await dypai.api.put("actualizar_work_event", {
           id: editId,
           date: dateString,
           concept: concept.trim() || null,
           description: description.trim() || null
         });
+        if (updateError) throw updateError;
 
         // 2. Identificar qué filas son nuevas, cuáles editar y cuáles borrar
         const rowsToDelete = originalDetails.filter(orig => !validRows.find(r => r.id === orig.id));
         const rowsToUpdate = validRows.filter(r => r.id); // Filas que tienen ID de BD (existentes)
         const rowsToCreate = validRows.filter(r => !r.id); // Filas nuevas sin ID
 
-        await Promise.all([
+        const results = await Promise.all([
           // Borrar filas eliminadas
           ...rowsToDelete.map(r => dypai.api.delete("eliminar_work_event_detail", { params: { id: r.id } })),
-          
+
           // Actualizar filas existentes
           ...rowsToUpdate.map(w => {
-            const total = ((w.work_hours || 0) * (w.work_hours_price || 0)) + 
-                          ((w.work_days || 0) * (w.work_days_price || 0)) + 
+            const total = ((w.work_hours || 0) * (w.work_hours_price || 0)) +
+                          ((w.work_days || 0) * (w.work_days_price || 0)) +
                           ((w.area_qty || 0) * (w.area_price || 0));
-            
+
             return dypai.api.put("actualizar_work_event_detail", {
               id: w.id,
               work_days: w.work_days || 0,
@@ -537,8 +541,8 @@ export default function AddWorkScreen() {
 
           // Crear nuevas filas
           ...rowsToCreate.map(w => {
-            const total = ((w.work_hours || 0) * (w.work_hours_price || 0)) + 
-                          ((w.work_days || 0) * (w.work_days_price || 0)) + 
+            const total = ((w.work_hours || 0) * (w.work_hours_price || 0)) +
+                          ((w.work_days || 0) * (w.work_days_price || 0)) +
                           ((w.area_qty || 0) * (w.area_price || 0));
 
             return dypai.api.post("crear_work_event_detail", {
@@ -561,22 +565,27 @@ export default function AddWorkScreen() {
             });
           })
         ]);
+        // Check for errors in any of the batch results
+        for (const res of results) {
+          if (res?.error) throw res.error;
+        }
       } else {
         // Crear nuevo evento (sin parcel_id ni task_type en la cabecera)
-        const res = await dypai.api.post("crear_work_event", {
+        const { data: eventData, error: createError } = await dypai.api.post("crear_work_event", {
           campaign_id: currentCampaignId,
           date: dateString,
           concept: concept.trim() || null,
           description: description.trim() || null
         });
-        
-        workEventId = res?.id || res?.data?.id || res?.result?.id;
+        if (createError) throw createError;
+        const createdEvent = Array.isArray(eventData) ? eventData[0] : eventData;
+        workEventId = createdEvent?.id;
         if (!workEventId) throw new Error("No se pudo crear el evento de trabajo");
 
         // Crear todos los detalles
-        await Promise.all(validRows.map(w => {
-          const total = ((w.work_hours || 0) * (w.work_hours_price || 0)) + 
-                        ((w.work_days || 0) * (w.work_days_price || 0)) + 
+        const detailResults = await Promise.all(validRows.map(w => {
+          const total = ((w.work_hours || 0) * (w.work_hours_price || 0)) +
+                        ((w.work_days || 0) * (w.work_days_price || 0)) +
                         ((w.area_qty || 0) * (w.area_price || 0));
 
           return dypai.api.post("crear_work_event_detail", {
@@ -598,6 +607,9 @@ export default function AddWorkScreen() {
             is_paid: false
           });
         }));
+        for (const res of detailResults) {
+          if (res?.error) throw res.error;
+        }
       }
 
       navigation.goBack();

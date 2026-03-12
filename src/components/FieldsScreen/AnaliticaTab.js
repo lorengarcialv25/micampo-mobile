@@ -112,20 +112,16 @@ export default function AnaliticaTab({ fieldId, isActive }) {
   const loadFinancialData = async () => {
     try {
       setLoading(true);
-      const response = await dypai.api.get("obtener_work_events_completos", {
+      const { data, error } = await dypai.api.get("obtener_work_events_completos", {
         params: {
           parcel_id: fieldId,
           limit: 1000,
           offset: 0
         }
       });
-      
-      let eventsData = [];
-      if (response?.data && Array.isArray(response.data)) {
-        eventsData = response.data;
-      } else if (Array.isArray(response)) {
-        eventsData = response;
-      }
+      if (error) throw error;
+
+      const eventsData = Array.isArray(data) ? data : [];
       
       const total = eventsData.reduce((sum, event) => sum + (parseFloat(event.total_cost) || 0), 0);
       setTotalCost(total);

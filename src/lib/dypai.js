@@ -47,10 +47,10 @@ const dummyClient = {
     getUser: async () => ({ data: { user: null }, error: null }),
   },
   api: {
-    get: async () => ({ data: [] }),
-    post: async () => ({ success: true }),
-    put: async () => ({ success: true }),
-    delete: async () => ({ success: true }),
+    get: async () => ({ data: null, error: null }),
+    post: async () => ({ data: null, error: null }),
+    put: async () => ({ data: null, error: null }),
+    delete: async () => ({ data: null, error: null }),
   },
 };
 

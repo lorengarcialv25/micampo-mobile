@@ -38,22 +38,16 @@ export default function DocumentsTab({ fieldId }) {
   const loadDocuments = async () => {
     try {
       setLoading(true);
-      const response = await dypai.api.get("obtener_parcel_documents", {
-        params: { 
+      const { data, error } = await dypai.api.get("obtener_parcel_documents", {
+        params: {
           parcel_id: fieldId,
           sort_by: "created_at",
           order: "DESC"
         },
       });
+      if (error) throw error;
 
-      let docs = [];
-      if (response?.data && Array.isArray(response.data)) {
-        docs = response.data;
-      } else if (Array.isArray(response)) {
-        docs = response;
-      }
-
-      setDocuments(docs);
+      setDocuments(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error cargando documentos:", error);
     } finally {
@@ -100,7 +94,7 @@ export default function DocumentsTab({ fieldId }) {
 
       // Usamos el mismo patrón que en mobile para subir archivos: procesar_documento_gasto
       // ya que maneja la conversión de base64 a archivo en el servidor de forma segura.
-      const uploadResult = await dypai.api.post("procesar_documento_gasto", {
+      const { data: uploadResult, error: uploadError } = await dypai.api.post("procesar_documento_gasto", {
         file_bytes: base64,
         content_type: mimeType,
         schema: {},
@@ -108,15 +102,17 @@ export default function DocumentsTab({ fieldId }) {
         file_name: fileName,
         subfolder_name: "parcelas",
       });
+      if (uploadError) throw uploadError;
 
-      const fileId = uploadResult?.result?.file_id || uploadResult?.file_id || uploadResult?.id;
+      const uploadData = Array.isArray(uploadResult) ? uploadResult[0] : uploadResult;
+      const fileId = uploadData?.result?.file_id || uploadData?.file_id || uploadData?.id;
       if (!fileId) throw new Error("No se recibió el ID del archivo");
 
-      const fileInfo = uploadResult?.result?.file || uploadResult?.file || {};
+      const fileInfo = uploadData?.result?.file || uploadData?.file || {};
       const fileUrl = fileInfo.file_url || fileInfo.file_name || null;
 
       // El endpoint de creación de documento de parcela (igual que en web)
-      await dypai.api.post("crear_parcel_document", {
+      const { error: createDocError } = await dypai.api.post("crear_parcel_document", {
         parcel_id: fieldId,
         file_id: fileId, // Es el path en el bucket
         file_name: fileName,
@@ -124,6 +120,7 @@ export default function DocumentsTab({ fieldId }) {
         mime_type: mimeType,
         file_url: fileUrl,
       });
+      if (createDocError) throw createDocError;
 
       Alert.alert("Éxito", "Documento subido correctamente");
       loadDocuments();
@@ -152,9 +149,10 @@ export default function DocumentsTab({ fieldId }) {
               }
 
               // 2. Eliminar registro de la base de datos (igual que en web)
-              await dypai.api.delete("eliminar_parcel_document", {
+              const { error: deleteError } = await dypai.api.delete("eliminar_parcel_document", {
                 params: { id: docId }
               });
+              if (deleteError) throw deleteError;
               
               Alert.alert("Éxito", "Documento eliminado");
               loadDocuments();

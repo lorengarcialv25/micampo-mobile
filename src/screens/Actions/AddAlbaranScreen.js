@@ -80,15 +80,17 @@ export default function AddAlbaranScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [parcelsRes, clientsRes] = await Promise.all([
+      const [parcelsResult, clientsResult] = await Promise.all([
         dypai.api.get("obtener_parcels", {
           params: { sort_by: "name", order: "ASC", limit: 1000 },
         }),
         dypai.api.get("obtener_clientes")
       ]);
-      
-      setParcels(Array.isArray(parcelsRes) ? parcelsRes : (parcelsRes?.data || []));
-      setClients(Array.isArray(clientsRes) ? clientsRes : (clientsRes?.data || []));
+      if (parcelsResult.error) throw parcelsResult.error;
+      if (clientsResult.error) throw clientsResult.error;
+
+      setParcels(Array.isArray(parcelsResult.data) ? parcelsResult.data : []);
+      setClients(Array.isArray(clientsResult.data) ? clientsResult.data : []);
     } catch (error) {
       console.error("Error cargando datos para albarán:", error);
     } finally {
@@ -212,7 +214,7 @@ export default function AddAlbaranScreen() {
         baseSchema.rendimiento_aceite = null;
       }
 
-      const ocrResult = await dypai.api.post("procesar_albaran_cosecha", {
+      const { data: ocrResult, error: ocrError } = await dypai.api.post("procesar_albaran_cosecha", {
         file_bytes: base64,
         content_type: mimeType,
         schema: baseSchema,
@@ -220,38 +222,36 @@ export default function AddAlbaranScreen() {
         save_file: true,
         subfolder_name: "albaranes",
       });
+      if (ocrError) throw ocrError;
 
-      const data = ocrResult?.result?.data || ocrResult?.data;
-      const ocrSuccess = ocrResult?.result?.success === true || ocrResult?.success === true;
+      const ocrData = ocrResult?.result?.data || ocrResult?.data;
       const fileId = ocrResult?.result?.file_id || ocrResult?.file_id;
 
       if (fileId) setPhotoUrl(fileId);
 
-      if (data) {
-        if (data.ticket_number) setTicketNumber(String(data.ticket_number));
-        if (data.peso_bruto) setGrossWeight(String(data.peso_bruto));
-        if (data.peso_tara) setTareWeight(String(data.peso_tara));
-        if (data.kilogramos_netos) setKilograms(String(data.kilogramos_netos));
-        
+      if (ocrData) {
+        if (ocrData.ticket_number) setTicketNumber(String(ocrData.ticket_number));
+        if (ocrData.peso_bruto) setGrossWeight(String(ocrData.peso_bruto));
+        if (ocrData.peso_tara) setTareWeight(String(ocrData.peso_tara));
+        if (ocrData.kilogramos_netos) setKilograms(String(ocrData.kilogramos_netos));
+
         // Mapeo inteligente de calidad/rendimiento
-        if (cropType === 'uva' && data.rendimiento_grados) setDegrees(String(data.rendimiento_grados));
-        if (cropType === 'aceituna_almazara' && data.rendimiento_aceite) setDegrees(String(data.rendimiento_aceite));
-        
+        if (cropType === 'uva' && ocrData.rendimiento_grados) setDegrees(String(ocrData.rendimiento_grados));
+        if (cropType === 'aceituna_almazara' && ocrData.rendimiento_aceite) setDegrees(String(ocrData.rendimiento_aceite));
+
         // Mapeo de aceituna aderezo
         if (cropType === 'aceituna_aderezo') {
-          if (data.calibre) setCaliber(String(data.calibre));
-          // Nota: molesta y suciedad no están en el estado actual de AddAlbaranScreen.js
-          // pero los incluimos si el usuario los añade en el futuro o para notas
+          if (ocrData.calibre) setCaliber(String(ocrData.calibre));
         } else {
-          if (data.variedad) setCaliber(String(data.variedad));
+          if (ocrData.variedad) setCaliber(String(ocrData.variedad));
         }
 
-        if (data.precio_unitario) setUnitPrice(String(data.precio_unitario));
-        if (data.importe_total) setTotalAmount(String(data.importe_total));
-        
-        if (data.fecha) {
+        if (ocrData.precio_unitario) setUnitPrice(String(ocrData.precio_unitario));
+        if (ocrData.importe_total) setTotalAmount(String(ocrData.importe_total));
+
+        if (ocrData.fecha) {
           try {
-            const d = new Date(data.fecha);
+            const d = new Date(ocrData.fecha);
             if (!isNaN(d.getTime())) setDate(d.toISOString().split('T')[0]);
           } catch (e) {}
         }
@@ -295,7 +295,7 @@ export default function AddAlbaranScreen() {
       // Si hay archivo pero no se ha subido (raro si pasó por OCR, pero por seguridad)
       if (fileUri && !finalPhotoUrl) {
         const base64 = await fileToBase64(fileUri);
-        const uploadRes = await dypai.api.post("procesar_albaran_cosecha", {
+        const { data: uploadData, error: uploadError } = await dypai.api.post("procesar_albaran_cosecha", {
           file_bytes: base64,
           content_type: fileType === "pdf" ? "application/pdf" : "image/jpeg",
           schema: {},
@@ -303,7 +303,8 @@ export default function AddAlbaranScreen() {
           file_name: fileName,
           subfolder_name: "albaranes",
         });
-        finalPhotoUrl = uploadRes?.result?.file_id || uploadRes?.file_id;
+        if (uploadError) throw uploadError;
+        finalPhotoUrl = uploadData?.result?.file_id || uploadData?.file_id;
       }
 
       const payload = {
@@ -325,7 +326,8 @@ export default function AddAlbaranScreen() {
         photo_url: finalPhotoUrl,
       };
 
-      await dypai.api.post("crear_harvest_ticket", payload);
+      const { error: createError } = await dypai.api.post("crear_harvest_ticket", payload);
+      if (createError) throw createError;
       Alert.alert("Éxito", "Albarán registrado correctamente");
       navigation.goBack();
     } catch (error) {

@@ -37,23 +37,24 @@ export default function ClientFormModal({ visible, onClose, onSuccess, initialDa
 
     setLoading(true);
     try {
-      let response;
       if (initialData?.id) {
-        response = await dypai.api.put("actualizar_cliente", {
+        const { error } = await dypai.api.put("actualizar_cliente", {
           id: initialData.id,
           name: name.trim(),
           is_cooperative: isCooperative
         });
+        if (error) throw error;
         Alert.alert("Éxito", "Cliente actualizado correctamente");
       } else {
-        response = await dypai.api.post("crear_cliente", {
+        const { data, error } = await dypai.api.post("crear_cliente", {
           name: name.trim(),
           is_cooperative: isCooperative
         });
+        if (error) throw error;
         Alert.alert("Éxito", "Cliente creado correctamente");
       }
-      
-      onSuccess(response);
+
+      onSuccess();
       onClose();
     } catch (err) {
       console.error("Error gestionando cliente:", err);

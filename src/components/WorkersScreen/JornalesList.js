@@ -21,17 +21,12 @@ const JornalesList = ({ jornales, onOpenCrewModal, onNavigateToPayments, dateFro
 
       try {
         setLoadingCount(true);
-        const response = await dypai.api.get('obtener_workers', {
+        const { data, error } = await dypai.api.get('obtener_workers', {
           params: { sort_by: 'name', order: 'ASC' }
         });
+        if (error) throw error;
 
-        let workersData = [];
-        if (response?.data && Array.isArray(response.data)) {
-          workersData = response.data;
-        } else if (Array.isArray(response)) {
-          workersData = response;
-        }
-        
+        const workersData = Array.isArray(data) ? data : [];
         setWorkersCount(workersData.length);
       } catch (error) {
         console.error('Error cargando conteo de trabajadores:', error);

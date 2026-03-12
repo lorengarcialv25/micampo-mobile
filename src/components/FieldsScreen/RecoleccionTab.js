@@ -29,7 +29,7 @@ export default function RecoleccionTab({ fieldId, isActive }) {
   const loadHarvestTickets = async () => {
     try {
       setLoading(true);
-      const response = await dypai.api.get("obtener_harvest_tickets", {
+      const { data, error } = await dypai.api.get("obtener_harvest_tickets", {
         params: {
           parcel_id: fieldId,
           campaign_id: currentCampaignId,
@@ -38,15 +38,9 @@ export default function RecoleccionTab({ fieldId, isActive }) {
           order: "DESC",
         }
       });
-      
-      let ticketsData = [];
-      if (response?.data && Array.isArray(response.data)) {
-        ticketsData = response.data;
-      } else if (Array.isArray(response)) {
-        ticketsData = response;
-      }
-      
-      setTickets(ticketsData);
+      if (error) throw error;
+
+      setTickets(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error cargando albaranes de parcela:", error);
     } finally {

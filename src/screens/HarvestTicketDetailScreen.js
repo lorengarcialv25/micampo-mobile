@@ -67,9 +67,12 @@ export default function HarvestTicketDetailScreen() {
         dypai.api.get("obtener_parcels"),
         dypai.api.get("obtener_clientes")
       ]);
-      
-      setParcels(Array.isArray(parcelsRes) ? parcelsRes : (parcelsRes?.data || []));
-      setClients(Array.isArray(clientsRes) ? clientsRes : (clientsRes?.data || []));
+
+      if (parcelsRes.error) throw parcelsRes.error;
+      if (clientsRes.error) throw clientsRes.error;
+
+      setParcels(Array.isArray(parcelsRes.data) ? parcelsRes.data : []);
+      setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
     } catch (error) {
       console.error("Error cargando datos:", error);
     }
@@ -80,12 +83,13 @@ export default function HarvestTicketDetailScreen() {
     
     setLoadingFile(true);
     try {
-      const res = await dypai.api.post('descargar_documento_albaran', {
+      const { data, error } = await dypai.api.post('descargar_documento_albaran', {
         entity_id: ticket.id,
         file_path: ticket.photo_url
       });
+      if (error) throw error;
 
-      const signedUrl = res?.data?.signedUrl || res?.signedUrl || res?.data?.data?.signedUrl || res?.signed_url;
+      const signedUrl = data?.signedUrl || data?.signed_url;
       
       if (signedUrl) {
         const canOpen = await Linking.canOpenURL(signedUrl);
@@ -132,8 +136,9 @@ export default function HarvestTicketDetailScreen() {
         notes: notes || null,
       };
 
-      await dypai.api.put("actualizar_harvest_ticket", payload);
-      
+      const { error } = await dypai.api.put("actualizar_harvest_ticket", payload);
+      if (error) throw error;
+
       setTicket({ ...ticket, ...payload });
       setIsEditing(false);
       Alert.alert("Éxito", "Albarán actualizado correctamente");
@@ -157,7 +162,8 @@ export default function HarvestTicketDetailScreen() {
           onPress: async () => {
             setLoading(true);
             try {
-              await dypai.api.delete("eliminar_harvest_ticket", { params: { id: ticket.id } });
+              const { error } = await dypai.api.delete("eliminar_harvest_ticket", { params: { id: ticket.id } });
+              if (error) throw error;
               navigation.goBack();
             } catch (error) {
               console.error("Error eliminando:", error);

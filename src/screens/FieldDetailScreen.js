@@ -51,17 +51,13 @@ export default function FieldDetailScreen() {
   const loadParcela = async () => {
     try {
       setLoading(true);
-      const response = await dypai.api.get("obtener_parcela_por_id", {
+      const { data, error } = await dypai.api.get("obtener_parcela_por_id", {
         params: { id: fieldId }
       });
-      
-      let fieldData = null;
-      if (response?.data) {
-        fieldData = Array.isArray(response.data) ? response.data[0] : response.data;
-      } else {
-        fieldData = Array.isArray(response) ? response[0] : response;
-      }
-      
+      if (error) throw error;
+
+      const fieldData = Array.isArray(data) ? data[0] : data;
+
       if (fieldData && fieldData.id) {
         setField(fieldData);
       } else {
@@ -78,16 +74,12 @@ export default function FieldDetailScreen() {
   const loadParcelMembers = async () => {
     try {
       setLoadingMembers(true);
-      const response = await dypai.api.get("obtener_parcel_members", {
+      const { data, error } = await dypai.api.get("obtener_parcel_members", {
         params: { parcel_id: fieldId }
       });
-      
-      let members = [];
-      if (response?.data && Array.isArray(response.data)) {
-        members = response.data;
-      } else if (Array.isArray(response)) {
-        members = response;
-      }
+      if (error) throw error;
+
+      const members = Array.isArray(data) ? data : [];
       
       const transformedMembers = members.map(member => ({
         id: member.id,
@@ -129,16 +121,13 @@ export default function FieldDetailScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              const response = await dypai.api.delete("eliminar_parcel_member", {
+              const { error } = await dypai.api.delete("eliminar_parcel_member", {
                 params: { id: memberId }
               });
-              
-              if (response?.success !== false) {
-                Alert.alert("Éxito", "Usuario eliminado correctamente");
-                loadParcelMembers();
-              } else {
-                throw new Error("No se pudo eliminar el usuario");
-              }
+              if (error) throw error;
+
+              Alert.alert("Éxito", "Usuario eliminado correctamente");
+              loadParcelMembers();
             } catch (error) {
               console.error("Error eliminando miembro:", error);
               Alert.alert("Error", error.message || "No se pudo eliminar el usuario");

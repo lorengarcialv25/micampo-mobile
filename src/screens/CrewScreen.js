@@ -52,16 +52,11 @@ export default function CrewScreen({ onClose }) {
       if (!isRefresh) {
         setLoading(true);
       }
-      const response = await dypai.api.get('obtener_workers', {
+      const { data, error } = await dypai.api.get('obtener_workers', {
         params: { sort_by: 'name', order: 'ASC' }
       });
-
-      let workersData = [];
-      if (response?.data && Array.isArray(response.data)) {
-        workersData = response.data;
-      } else if (Array.isArray(response)) {
-        workersData = response;
-      }
+      if (error) throw error;
+      const workersData = data || [];
       setWorkers(workersData);
     } catch (error) {
       console.error('Error cargando trabajadores:', error);
@@ -103,7 +98,8 @@ export default function CrewScreen({ onClose }) {
     if (!confirmWorker) return;
 
     try {
-      await dypai.api.delete('eliminar_worker', { id: confirmWorker.id });
+      const { error } = await dypai.api.delete('eliminar_worker', { id: confirmWorker.id });
+      if (error) throw error;
       
       // Recargar lista después de eliminar
       await loadWorkers(false);
@@ -127,7 +123,7 @@ export default function CrewScreen({ onClose }) {
 
       if (editingWorker) {
         // Editar trabajador existente
-        await dypai.api.put('actualizar_worker', {
+        const { error } = await dypai.api.put('actualizar_worker', {
           id: editingWorker.id,
           name: workerData.name,
           phone: workerData.phone || null,
@@ -138,10 +134,11 @@ export default function CrewScreen({ onClose }) {
           observations: workerData.observations || null,
           payment_method: workerData.payment_method || 'daily',
         });
+        if (error) throw error;
         setToastMessage("Trabajador actualizado correctamente");
       } else {
         // Crear nuevo trabajador
-        await dypai.api.post('crear_worker', {
+        const { error } = await dypai.api.post('crear_worker', {
           name: workerData.name,
           phone: workerData.phone || null,
           email: workerData.email || null,
@@ -151,6 +148,7 @@ export default function CrewScreen({ onClose }) {
           observations: workerData.observations || null,
           payment_method: workerData.payment_method || 'daily',
         });
+        if (error) throw error;
         setToastMessage("Trabajador creado correctamente");
       }
       

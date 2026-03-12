@@ -149,18 +149,12 @@ export default function AddExpenseScreen() {
   const loadInitialData = async () => {
     try {
       setLoadingData(true);
-      const parcelsRes = await dypai.api.get("obtener_parcels", {
+      const { data, error } = await dypai.api.get("obtener_parcels", {
         params: { sort_by: "name", order: "ASC", limit: 1000 },
       });
+      if (error) throw error;
 
-      let parcelsData = [];
-      if (parcelsRes?.data && Array.isArray(parcelsRes.data)) {
-        parcelsData = parcelsRes.data;
-      } else if (Array.isArray(parcelsRes)) {
-        parcelsData = parcelsRes;
-      }
-
-      setParcels(parcelsData);
+      setParcels(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error cargando datos:", error);
     } finally {
@@ -253,7 +247,7 @@ export default function AddExpenseScreen() {
         categoria: null,
       };
 
-      const ocrResult = await dypai.api.post("procesar_documento_gasto", {
+      const { data: ocrResult, error: ocrError } = await dypai.api.post("procesar_documento_gasto", {
         file_bytes: base64,
         content_type: mimeType,
         schema: schema,
@@ -262,37 +256,38 @@ export default function AddExpenseScreen() {
         file_name: fileName || `documento_${Date.now()}.${type === "pdf" ? "pdf" : "jpg"}`,
         subfolder_name: "gastos",
       });
+      if (ocrError) throw ocrError;
 
-      const data = ocrResult?.result?.data || ocrResult?.data;
+      const ocrData_ = ocrResult?.result?.data || ocrResult?.data;
       const ocrSuccess = ocrResult?.result?.success === true || ocrResult?.success === true;
 
-      if (ocrSuccess && data) {
-        setOcrData(data);
-        if (data.concepto) setConcept(data.concepto);
-        else if (data.establecimiento) setConcept(data.establecimiento);
-        else if (data.proveedor) setConcept(data.proveedor);
+      if (ocrSuccess && ocrData_) {
+        setOcrData(ocrData_);
+        if (ocrData_.concepto) setConcept(ocrData_.concepto);
+        else if (ocrData_.establecimiento) setConcept(ocrData_.establecimiento);
+        else if (ocrData_.proveedor) setConcept(ocrData_.proveedor);
 
-        const monto = data.total || data.importe_total;
+        const monto = ocrData_.total || ocrData_.importe_total;
         if (monto) {
           const montoNum = typeof monto === "string" ? parseFloat(monto.replace(/[^\d.,]/g, "").replace(",", ".")) : monto;
           if (!isNaN(montoNum)) setAmount(String(montoNum.toFixed(2)));
         }
 
-        if (data.base_imponible) setBaseImponible(String(data.base_imponible));
-        if (data.iva) setIva(String(data.iva));
-        if (data.numero_factura) setNumeroFactura(data.numero_factura);
-        if (data.proveedor) setProveedor(data.proveedor);
-        if (data.establecimiento) setEstablecimiento(data.establecimiento);
-        
-        if (data.base_imponible || data.iva || data.numero_factura) setShowFiscalData(true);
+        if (ocrData_.base_imponible) setBaseImponible(String(ocrData_.base_imponible));
+        if (ocrData_.iva) setIva(String(ocrData_.iva));
+        if (ocrData_.numero_factura) setNumeroFactura(ocrData_.numero_factura);
+        if (ocrData_.proveedor) setProveedor(ocrData_.proveedor);
+        if (ocrData_.establecimiento) setEstablecimiento(ocrData_.establecimiento);
 
-        if (data.fecha) {
-          const parsed = new Date(data.fecha);
+        if (ocrData_.base_imponible || ocrData_.iva || ocrData_.numero_factura) setShowFiscalData(true);
+
+        if (ocrData_.fecha) {
+          const parsed = new Date(ocrData_.fecha);
           if (!isNaN(parsed.getTime())) setDate(parsed);
         }
 
         // Detección de categoría simple
-        const searchPool = (data.concepto + " " + (data.categoria || "")).toLowerCase();
+        const searchPool = (ocrData_.concepto + " " + (ocrData_.categoria || "")).toLowerCase();
         const cats = transactionType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
         const found = cats.find(c => searchPool.includes(c.toLowerCase()));
         if (found) setCategory(found);
@@ -326,7 +321,7 @@ export default function AddExpenseScreen() {
 
       if (fileUri && !receiptImageUrl) {
         const base64 = await fileToBase64(fileUri);
-        const uploadRes = await dypai.api.post("procesar_documento_gasto", {
+        const { data: uploadData, error: uploadError } = await dypai.api.post("procesar_documento_gasto", {
           file_bytes: base64,
           content_type: fileType === "pdf" ? "application/pdf" : "image/jpeg",
           schema: {},
@@ -334,7 +329,8 @@ export default function AddExpenseScreen() {
           file_name: fileName,
           subfolder_name: "gastos",
         });
-        receiptImageUrl = uploadRes?.result?.file_id || uploadRes?.file_id;
+        if (uploadError) throw uploadError;
+        receiptImageUrl = uploadData?.result?.file_id || uploadData?.file_id;
       }
 
       const transactionData = {
@@ -354,7 +350,8 @@ export default function AddExpenseScreen() {
         base_imponible: baseImponible ? parseFloat(baseImponible) : null,
       };
 
-      await dypai.api.post("crear_transaccion", transactionData);
+      const { error: createError } = await dypai.api.post("crear_transaccion", transactionData);
+      if (createError) throw createError;
       navigation.navigate("MainTabs", { screen: "Cuentas" });
       setTimeout(() => Alert.alert("Éxito", "Transacción registrada"), 300);
     } catch (error) {

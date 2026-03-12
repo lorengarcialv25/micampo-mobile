@@ -42,7 +42,7 @@ export const CampaignProvider = ({ children }) => {
       setLoading(true);
       
       // Obtener todas las campañas del usuario
-      const campaignsResponse = await dypai.api.get('obtener_campaigns', {
+      const { data: campaignsData, error } = await dypai.api.get('obtener_campaigns', {
         params: {
           sort_by: 'created_at',
           order: 'DESC',
@@ -50,14 +50,12 @@ export const CampaignProvider = ({ children }) => {
         }
       });
 
-      let campaigns = [];
-      if (campaignsResponse?.data && Array.isArray(campaignsResponse.data)) {
-        campaigns = campaignsResponse.data;
-      } else if (campaignsResponse?.result && Array.isArray(campaignsResponse.result)) {
-        campaigns = campaignsResponse.result;
-      } else if (Array.isArray(campaignsResponse)) {
-        campaigns = campaignsResponse;
+      if (error) {
+        console.error('Error obteniendo campañas:', error);
+        return;
       }
+
+      let campaigns = campaignsData || [];
 
       // 1. Intentar usar la campaña guardada en AsyncStorage si existe en la lista
       const savedId = await AsyncStorage.getItem('last_campaign_id');
@@ -107,20 +105,23 @@ export const CampaignProvider = ({ children }) => {
         }
 
         try {
-          const newCampaign = await dypai.api.post('crear_campaign', {
+          const { data: newCampaignData, error: createError } = await dypai.api.post('crear_campaign', {
             name: campaignName,
             start_date: startDate,
             end_date: endDate,
             is_active: true
           });
 
-          if (newCampaign?.id) {
+          if (createError) throw createError;
+
+          const created = Array.isArray(newCampaignData) ? newCampaignData[0] : newCampaignData;
+          if (created?.id) {
             const fullCampaignName = `Campaña ${campaignName}`;
             setCurrentCampaign(fullCampaignName);
-            setCurrentCampaignId(newCampaign.id);
-            campaigns = [{ id: newCampaign.id, name: fullCampaignName, is_active: true, start_date: startDate, end_date: endDate }];
+            setCurrentCampaignId(created.id);
+            campaigns = [{ id: created.id, name: fullCampaignName, is_active: true, start_date: startDate, end_date: endDate }];
             // Guardar en AsyncStorage
-            await AsyncStorage.setItem('last_campaign_id', newCampaign.id);
+            await AsyncStorage.setItem('last_campaign_id', created.id);
             await AsyncStorage.setItem('last_campaign_name', fullCampaignName);
           }
         } catch (error) {
@@ -184,21 +185,21 @@ export const CampaignProvider = ({ children }) => {
       // Desactivar todas las campañas primero
       const campaignsToUpdate = campaignList.filter(c => c.active);
       for (const camp of campaignsToUpdate) {
-        try {
-          await dypai.api.put('actualizar_campaign', {
-            id: camp.id,
-            is_active: false
-          });
-        } catch (error) {
-          console.error(`Error desactivando campaña ${camp.id}:`, error);
+        const { error: deactivateError } = await dypai.api.put('actualizar_campaign', {
+          id: camp.id,
+          is_active: false
+        });
+        if (deactivateError) {
+          console.error(`Error desactivando campaña ${camp.id}:`, deactivateError);
         }
       }
 
       // Activar la campaña seleccionada
-      await dypai.api.put('actualizar_campaign', {
+      const { error: activateError } = await dypai.api.put('actualizar_campaign', {
         id: campaignId,
         is_active: true
       });
+      if (activateError) throw activateError;
 
       // Actualizar estado local
       setCampaignList(prev => prev.map(c => ({
@@ -215,13 +216,16 @@ export const CampaignProvider = ({ children }) => {
 
   const createCampaign = async (name, startDate, endDate, isActive = false) => {
     try {
-      const newCampaign = await dypai.api.post('crear_campaign', {
+      const { data: newCampaignData, error } = await dypai.api.post('crear_campaign', {
         name,
         start_date: startDate || null,
         end_date: endDate || null,
         is_active: isActive
       });
 
+      if (error) throw error;
+
+      const newCampaign = Array.isArray(newCampaignData) ? newCampaignData[0] : newCampaignData;
       if (newCampaign?.id) {
         const campaign = {
           id: newCampaign.id,
@@ -257,8 +261,9 @@ export const CampaignProvider = ({ children }) => {
       if (updates.end_date !== undefined) apiUpdates.end_date = updates.end_date || null;
       if (updates.active !== undefined) apiUpdates.is_active = updates.active;
 
-      await dypai.api.put('actualizar_campaign', apiUpdates);
-      
+      const { error } = await dypai.api.put('actualizar_campaign', apiUpdates);
+      if (error) throw error;
+
       if (updates.name && campaignId === currentCampaignId) {
         setCurrentCampaign(updates.name);
         await AsyncStorage.setItem('last_campaign_name', updates.name);
@@ -275,8 +280,9 @@ export const CampaignProvider = ({ children }) => {
 
   const deleteCampaign = async (campaignId) => {
     try {
-      await dypai.api.delete('eliminar_campaign', { params: { id: campaignId } });
-      
+      const { error } = await dypai.api.delete('eliminar_campaign', { params: { id: campaignId } });
+      if (error) throw error;
+
       if (campaignId === currentCampaignId) {
         const other = campaignList.find(c => c.id !== campaignId);
         if (other) {
