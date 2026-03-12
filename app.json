@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permite usar Face ID para iniciar sesión de forma rápida y segura."
+        }
+      ]
+    ],
+    "ios": {
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Permite usar Face ID para iniciar sesión de forma rápida y segura.",
+        "NSMicrophoneUsageDescription": "Necesitamos acceso al micrófono para que puedas registrar trabajos y gastos mediante voz."
+      }
+    },
+    "android": {
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    }
+  }
+}

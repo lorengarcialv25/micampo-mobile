@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "dypai-sdk": {
+      "source": "dypai.ai",
+      "sourceType": "well-known",
+      "computedHash": "93e20cfaf2944899fe20e511c7d27d1194ffec08eee4ff42a8aa7b7fa64dc6ca"
+    }
+  }
+}
