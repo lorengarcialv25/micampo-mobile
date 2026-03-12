@@ -103,12 +103,12 @@ export const AuthProvider = ({ children }) => {
 
   const login = async ({ email, password, saveBiometric = false }) => {
     try {
-      const response = await dypai.auth.login({ email, password });
-      
-      // El SDK retorna { token, refreshToken, user }
-      const newUser = response.user;
-      const newToken = response.token;
-      
+      const { data, error } = await dypai.auth.login({ email, password });
+      if (error) throw error;
+
+      const newUser = data?.user;
+      const newToken = data?.token || data?.access_token;
+
       // El SDK guarda automáticamente en storage
       // onAuthStateChange se disparará con la sesión completa
       // Por ahora establecemos el estado directamente para respuesta inmediata
@@ -116,7 +116,7 @@ export const AuthProvider = ({ children }) => {
         setUser(newUser);
         setToken(newToken);
       }
-      
+
       if (saveBiometric && newToken) {
         try {
           await BiometricService.enableBiometric(email, password);
@@ -125,7 +125,7 @@ export const AuthProvider = ({ children }) => {
           console.warn('No se pudo habilitar biometría:', biometricError);
         }
       }
-      
+
       return {
         token: newToken,
         user: newUser,
@@ -138,7 +138,8 @@ export const AuthProvider = ({ children }) => {
 
   const signInWithOtp = async (phone) => {
     try {
-      return await dypai.auth.signInWithOtp({ phone });
+      const { error } = await dypai.auth.signInWithOtp({ phone });
+      if (error) throw error;
     } catch (error) {
       console.error('Error solicitando OTP:', error);
       throw error;
@@ -210,24 +211,26 @@ export const AuthProvider = ({ children }) => {
 
   const register = async ({ email, password, username }) => {
     try {
-      const response = await dypai.auth.register({
+      const { data, error } = await dypai.auth.register({
         email,
         password,
         user_data: { username },
       });
-      
-      const registerToken = response.token;
-      
+      if (error) throw error;
+
+      const newUser = data?.user;
+      const registerToken = data?.token || data?.access_token;
+
       // El SDK guarda automáticamente
       // onAuthStateChange se disparará con la sesión completa
-      if (mountedRef.current && response.user && registerToken) {
-        setUser(response.user);
+      if (mountedRef.current && newUser && registerToken) {
+        setUser(newUser);
         setToken(registerToken);
       }
-      
+
       return {
         token: registerToken,
-        user: response.user,
+        user: newUser,
       };
     } catch (error) {
       console.error('Error en registro:', error);
@@ -237,7 +240,8 @@ export const AuthProvider = ({ children }) => {
 
   const recoverPassword = async ({ email }) => {
     try {
-      return await dypai.auth.recoverPassword({ email });
+      const { error } = await dypai.auth.recoverPassword({ email });
+      if (error) throw error;
     } catch (error) {
       console.error('Error recuperando contraseña:', error);
       throw error;
@@ -246,7 +250,9 @@ export const AuthProvider = ({ children }) => {
 
   const getAppUser = async () => {
     try {
-      return await dypai.auth.me();
+      const { data, error } = await dypai.auth.me();
+      if (error) throw error;
+      return data;
     } catch (error) {
       console.error('Error obteniendo usuario:', error);
       throw error;

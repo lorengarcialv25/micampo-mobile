@@ -69,11 +69,12 @@ export default function RegisterScreen() {
       
       // Actualizar el nombre del usuario después de verificar el OTP
       try {
-        await dypai.auth.updateUser({
+        const { error: updateError } = await dypai.auth.updateUser({
           data: { full_name: username.trim() }
         });
-      } catch (updateError) {
-        console.warn('No se pudo actualizar el nombre:', updateError);
+        if (updateError) console.warn('No se pudo actualizar el nombre:', updateError);
+      } catch (updateErr) {
+        console.warn('No se pudo actualizar el nombre:', updateErr);
       }
       
       // La navegación se manejará automáticamente por el AuthContext
